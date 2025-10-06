@@ -4,10 +4,16 @@ import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 
+from math import ceil
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
+from matplotlib.gridspec import GridSpec
 
-plt.style.use("dark_background")
+plt.style.use("./computermodern.mplstyle")
+matplotlib.rcParams.update({
+    "xtick.bottom": False, "xtick.labelbottom": False,
+    "ytick.left":   False, "ytick.labelleft":   False
+})
 
 """
 Model architecture:
@@ -81,6 +87,56 @@ class MLP:
             # #            ===***===
 
         return Z_compute_graph, activations
+
+    def dump_matrices(self, X, Y, figname, show=False):
+        """ For each layer, output a picture of the weights and biases. """
+
+        fig = plt.figure(figsize=(21, 9), dpi=200)
+        n_matrices = self.n_hl + 1
+
+        # I want 3 matrices per row
+        nrows = ceil(n_matrices / 3)
+        ncols = 3
+        weight_heights = [4] * nrows
+        bias_heights = [1] * nrows
+        gs = GridSpec(
+                nrows=nrows * 2 + 2,  # 2xnrows for weights & biases, 2 extra for input and output layers
+                ncols=ncols + 1,  # one extra col for a colorbar
+                height_ratios=[1, *weight_heights, *bias_heights, 1],
+                width_ratios=[3, 3, 3, 1], # [4, *([3] * 3), *([3] * 3), 4],
+        )
+        ax_cbar = fig.add_subplot(gs[1:-1, -1])
+        norm = Normalize(vmin=-1, vmax=1)
+        sm = plt.cm.ScalarMappable(norm=norm, cmap="twilight_shifted")
+        sm.set_array([])  # harmless placeholder for older Matplotlib
+        cb = fig.colorbar(sm, ax_cbar, orientation="vertical")
+        cb.set_label("Intensity")
+
+        ax_input = fig.add_subplot(gs[0, :-1])
+        ax_input.set_title("Input Layer")
+        ax_input.matshow(X.reshape(self.n_inputs, 1), cmap="twilight_shifted")
+
+        ax_output = fig.add_subplot(gs[-1, :-1])
+        ax_output.set_title("Output Layer")
+        ax_output.matshow(Y.reshape(self.n_outputs, 1), cmap="twilight_shifted")
+
+        for i in range(n_matrices):
+            ax = fig.add_subplot(gs[i // 3 + 1, i % 3])
+            ax.matshow(model.W[i], cmap="twilight_shifted")
+
+            if i == 1:
+                ax.set_title("Weights")
+
+            ax = fig.add_subplot(gs[nrows + i // 3 + 1, i % 3])
+            ax.matshow(model.B[i].T, cmap="twilight_shifted")
+            if i == 1:
+                ax.set_title("Biases")
+
+        # fig.tight_layout()
+        plt.savefig(figname)
+        if show:
+            plt.show()
+
 
     # -- GPT magic ---
     def dump_state(self):
@@ -343,7 +399,9 @@ for t in range(n_examples):
 
     # Make an image of the current model state
     model.graph_out(X, filename=f"step_{t}", show=False)
+    model.dump_matrices(X, Y, figname=f"mat_step_{t}")
 
 test = np.array([0, 0])
 _, a = model.forward(test)
+print("\n\n\n")
 print(f"Model prediction for {test=}: {a[-1][-1]=}")
