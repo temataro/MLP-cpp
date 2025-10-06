@@ -54,6 +54,24 @@ class MLP:
         # b2 = np.zeros(shape=(n_outputs, 1))
         self.lr = 0.1
 
+    def forward(self, X):
+        Z_compute_graph = []
+
+        activations = [X]
+        for i in range(self.n_hl + 1):
+            Z_compute_graph.append(model.W[i] @ activations[-1] + model.B[i])
+            activations.append(activation(Z_compute_graph[-1]))
+            # # ===***=== Forward pass ===***===
+            # Z1 = model.W[0] @ X + model.B[0]  # (n_hl_1, n_inputs) x (n_inputs, 1) + (n_hl_1, 1)
+            # A1 = activation(Z1)  # (n_hl_1, 1)
+            # Z2 = model.W[1] @ A1 + model.B[1]  # (n_hl_2, n_hl_1) x (n_hl_1, 1) + (n_hl_2, 1)
+            # A2 = activation(Z2)  # (n_hl_2, 1)
+            # Z3 = model.W[2] @ A2 + model.B[2]  # (n_outputs, n_hl_2) x (n_hl_2, 1) + (n_outputs, 1)
+            # A3 = activation(Z3)  # (n_outputs, 1)
+            # #            ===***===
+
+        return Z_compute_graph, activations
+
 
 # ---
 
@@ -80,16 +98,11 @@ for t in range(n_examples):
     X = X_train[t].reshape(model.n_inputs, 1)
     Y = Y_train[t].reshape(model.n_outputs, 1)
 
-    # TODO: make this into a function on a model M
-    # `M.forward(X)`
     # ===***=== Forward pass ===***===
-    Z1 = model.W[0] @ X + model.B[0]  # (n_hl_1, n_inputs) x (n_inputs, 1) + (n_hl_1, 1)
-    A1 = activation(Z1)  # (n_hl_1, 1)
-    Z2 = model.W[1] @ A1 + model.B[1]  # (n_hl_2, n_hl_1) x (n_hl_1, 1) + (n_hl_2, 1)
-    A2 = activation(Z2)  # (n_hl_2, 1)
-    Z3 = model.W[2] @ A2 + model.B[2]  # (n_outputs, n_hl_2) x (n_hl_2, 1) + (n_outputs, 1)
-    A3 = activation(Z3)  # (n_outputs, 1)
-    #            ===***===
+    Z_compute_graph, activations = model.forward(X)
+    Z1, Z2, Z3 = Z_compute_graph
+    _, A1, A2, A3 = activations
+    #             ===***===
 
     # ===***=== Loss ===***===
     C = (1 / m) * np.sum(np.square(A3 - Y))
