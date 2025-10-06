@@ -91,7 +91,7 @@ class MLP:
     def dump_matrices(self, X, Y, figname, show=False):
         """ For each layer, output a picture of the weights and biases. """
 
-        fig = plt.figure(figsize=(21, 9), dpi=200)
+        fig = plt.figure(figsize=(16, 9), dpi=160)
         n_matrices = self.n_hl + 1
 
         # I want 3 matrices per row
