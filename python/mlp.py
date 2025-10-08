@@ -17,8 +17,15 @@ def activation(arr):
 def activation_prime(arr):
     # sigmoid' = exp(-arr)/(1+exp(-arr))**2
     # or more efficiently,
+
     x = activation(arr)
     return x * (1 - x)
+
+def RELU(arr):
+    return np.where(arr > 0, arr, 0)
+
+def RELU_prime(arr):
+    return np.where(arr > 0, 1, 0)
 
 
 class MLP:
