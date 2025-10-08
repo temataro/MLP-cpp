@@ -7,6 +7,8 @@ from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
 from matplotlib.gridspec import GridSpec
 
+DBG = 0
+
 
 def activation(arr):
     return 1 / (1 + np.exp(-1 * arr))
@@ -20,7 +22,7 @@ def activation_prime(arr):
 
 
 class MLP:
-    def __init__(self, n_inputs=2, hl=[4, 4], n_outputs=1):
+    def __init__(self, n_inputs=2, hl=[4, 4], n_outputs=1, init_lr=0.1):
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
         self.n_hl = len(hl)
@@ -31,35 +33,64 @@ class MLP:
         for i in range(1, 2 + self.n_hl):
             self.W.append(np.random.random((self.layers[i], self.layers[i - 1])))
             self.B.append(np.zeros(shape=(self.layers[i], 1)))
-        #
-        # example for 2 hidden layers
-        # W0 = np.random.random((hl[0], n_inputs))
-        # W1 = np.random.random((hl[1], hl[0]))
-        # W2 = np.random.random((n_outputs, hl[1]))
-        # b0 = np.zeros(shape=(hl[0], 1))
-        # b1 = np.zeros(shape=(hl[1], 1))
-        # b2 = np.zeros(shape=(n_outputs, 1))
-        self.lr = 0.1
+
+        self.lr = init_lr
 
     def forward(self, X):
         Z_compute_graph = []
 
-        activations = [X]  # X is the input layer, shape=(n_inputs, 1)
+        activations = [X]  # A[0]=X is the input layer, shape=(n_inputs, 1)
         for i in range(self.n_hl + 1):
-            Z_compute_graph.append(self.W[i] @ activations[-1] + self.B[i])
+            Z = self.W[i] @ activations[-1]  # Stupid numpy reshaping
+            # without a reshape into (-1, 1) this would broadcast into a
+            # Z.size, Z.size array when you try to add it to the bias vector
+            # (Z.size,) and (Z.size, 1) are different!!!
+            Z_compute_graph.append(Z.reshape(-1, 1) + self.B[i])
             activations.append(activation(Z_compute_graph[-1]))
 
-            # # ===***=== Forward pass ===***===
-            # # example for 2 hidden layers
-            # Z1 = model.W[0] @ X + model.B[0]  # (n_hl_1, n_inputs) x (n_inputs, 1) + (n_hl_1, 1)
-            # A1 = activation(Z1)  # (n_hl_1, 1)
-            # Z2 = model.W[1] @ A1 + model.B[1]  # (n_hl_2, n_hl_1) x (n_hl_1, 1) + (n_hl_2, 1)
-            # A2 = activation(Z2)  # (n_hl_2, 1)
-            # Z3 = model.W[2] @ A2 + model.B[2]  # (n_outputs, n_hl_2) x (n_hl_2, 1) + (n_outputs, 1)
-            # A3 = activation(Z3)  # (n_outputs, 1)
-            # #            ===***===
-
         return Z_compute_graph, activations
+
+    def backward(self, m, Y, Z, A):
+        """
+        m - number of training examples
+        X - inputs
+        Y - Outputs
+        Z - WX + b
+        A - Activations(Z)
+        """
+        delta = []
+        # TODO: test with n_outputs > 1 in case we have to average here or
+        # something
+        dC_dA = [A[-1] - Y]  # Error of last layer
+        dC_dW = []
+        dC_db = []
+
+        for i in range(self.n_hl, -1, -1):
+            d = dC_dA[-1] * activation_prime(Z[i])
+            w = (1 / m) * (d @ A[i].T)
+            b = (1 / m) * np.sum(d, axis=1, keepdims=True)
+            a = self.W[i].T @ d
+            delta.append(d)
+            dC_dW.append(w)
+            dC_dA.append(a)
+            dC_db.append(b)
+
+            if DBG:
+                print(
+                    f"[DBG] layer #{i}\n"
+                    f"\n{delta[-1].shape=}"
+                    f"\n{dC_dW[-1].shape=}"
+                    f"\n{dC_dA[-1].shape=}"
+                    f"\n{dC_db[-1].shape=}"
+                )
+
+        # Now we do the model update step
+        dC_dW.reverse()
+        dC_db.reverse()
+
+        for i in range(self.n_hl + 1):
+            self.W[i] -= self.lr * dC_dW[i]
+            self.B[i] -= self.lr * dC_db[i]
 
     def dump_matrices(self, X, Y, figname, show=False):
         """For each layer, output a picture of the weights and biases."""
@@ -297,5 +328,3 @@ class MLP:
             plt.close(fig)
 
         return fig, ax
-
-    # -- ---

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from mlp import *
+
+DBG = 0
 
 plt.style.use("./computermodern.mplstyle")
 matplotlib.rcParams.update(
@@ -49,10 +52,12 @@ model = MLP()
 
 m = n_examples
 for t in range(n_examples):
-    print(
-        f"==== Training Step {t}\n{model.W[0]=},\n{model.W[1]=},\n{model.W[2]=},\n{model.B[0]=},\n{model.B[1]=},\n{model.B[2]=},\n{model.lr=}\n"
-    )
-    print("=== *** ===")
+    if DBG:
+        print(
+            f"==== Training Step {t}\n{model.W[0]=},\n{model.W[1]=},\n{model.W[2]=},\n{model.B[0]=},\n{model.B[1]=},\n{model.B[2]=},\n{model.lr=}\n"
+        )
+        print("=== *** ===")
+
     X = X_train[t].reshape(model.n_inputs, 1)
     Y = Y_train[t].reshape(model.n_outputs, 1)
 
@@ -67,38 +72,8 @@ for t in range(n_examples):
     print(f"Training step #{t}\nAvg MSE loss={C}\n")
     #        ===***===
 
-    # ===***=== Backprop ===***===
-    """
-    delta_3 = d(C)/d(Z3) = [d(C)/d(A3)] . sigmoid'(Z3)  # special for output layer
-    """
-
-    delta_3 = (A3 - Y) * activation_prime(Z3)
-    dC_dW3 = (1 / m) * (delta_3 @ A2.T)
-    dC_db3 = (1 / m) * np.sum(delta_3, axis=1, keepdims=True)
-
-    dC_dA2 = model.W[2].T @ delta_3
-    delta_2 = dC_dA2 * activation_prime(Z2)
-    dC_dW2 = (1 / m) * (delta_2 @ A1.T)
-    dC_db2 = (1 / m) * np.sum(delta_2, axis=1, keepdims=True)
-
-    dC_dA1 = model.W[1].T @ delta_2
-    delta_1 = dC_dA1 * activation_prime(Z1)
-    print(f"xxxx {delta_1.shape=}{X.shape=}")
-    dC_dW1 = (1 / m) * (delta_1 @ X.T)
-    dC_db1 = (1 / m) * np.sum(delta_1, axis=1, keepdims=True)
-    #         ===***===
-
-    # ===***=== Gradient descent update ===***===
-    model.W[2] -= model.lr * dC_dW3
-    model.W[1] -= model.lr * dC_dW2
-    print(f"xxxx {(model.lr * dC_dW2).shape=}")
-    print(f"xxxx {(model.lr * dC_dW1).shape=}")
-    model.W[0] -= model.lr * dC_dW1
-
-    model.B[2] -= model.lr * dC_db3
-    model.B[1] -= model.lr * dC_db2
-    model.B[0] -= model.lr * dC_db1
-    #                   ===***===
+    # ===***=== Backprop & Step ===***===
+    model.backward(m, Y, Z=Z_compute_graph, A=activations)
 
     # Make an image of the current model state
     model.graph_out(X, filename=f"step_{t}", show=False)
@@ -106,5 +81,6 @@ for t in range(n_examples):
 
 test = np.array([0, 0])
 _, a = model.forward(test)
-print("\n\n\n")
+print(f"{a=}\n\n\n")
+
 print(f"Model prediction for {test=}: {a[-1][-1]=}")
