@@ -3,11 +3,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from math import ceil
-from matplotlib.cm import get_cmap
+from pathlib import Path
 from matplotlib.colors import Normalize
 from matplotlib.gridspec import GridSpec
 
 DBG = 0
+MODEL_ARCH_PNG_DIR = "model/"
+MAT_PNG_DIR = "matrices/"
+
+try:
+    Path.mkdir(MODEL_ARCH_PNG_DIR)
+    Path.mkdir(MAT_PNG_DIR)
+except FileExistsError:
+    pass
 
 
 def activation(arr):
@@ -21,8 +29,10 @@ def activation_prime(arr):
     x = activation(arr)
     return x * (1 - x)
 
+
 def RELU(arr):
     return np.where(arr > 0, arr, 0)
+
 
 def RELU_prime(arr):
     return np.where(arr > 0, 1, 0)
@@ -33,6 +43,10 @@ class MLP:
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
         self.n_hl = len(hl)
+
+        assert len(hl) != 0 and not any(
+            x < 1 for x in hl
+        ), f"Weird hidden layers! {hl=}"
 
         self.layers = [n_inputs, *hl, n_outputs]
         self.W = []
@@ -48,10 +62,7 @@ class MLP:
 
         activations = [X]  # A[0]=X is the input layer, shape=(n_inputs, 1)
         for i in range(self.n_hl + 1):
-            Z = self.W[i] @ activations[-1]  # Stupid numpy reshaping
-            # without a reshape into (-1, 1) this would broadcast into a
-            # Z.size, Z.size array when you try to add it to the bias vector
-            # (Z.size,) and (Z.size, 1) are different!!!
+            Z = self.W[i] @ activations[-1]  # footnote 1
             Z_compute_graph.append(Z.reshape(-1, 1) + self.B[i])
             activations.append(activation(Z_compute_graph[-1]))
 
@@ -145,7 +156,7 @@ class MLP:
                 ax.set_title("Biases")
 
         # fig.tight_layout()
-        plt.savefig(figname)
+        plt.savefig(MAT_PNG_DIR + figname, dpi=200, bbox_inches="tight")
         if show:
             plt.show()
 
@@ -155,6 +166,7 @@ class MLP:
         Returns a plain dict you can serialize/log each step:
         - weights, biases, Zs, As (deep copies).
         """
+
         Zs, As = self.forward(
             self._last_X_for_dump
             if hasattr(self, "_last_X_for_dump")
@@ -328,10 +340,18 @@ class MLP:
         plt.tight_layout()
 
         if filename is not None:
-            fig.savefig(filename, dpi=200, bbox_inches="tight")
+            fig.savefig(MODEL_ARCH_PNG_DIR + filename, dpi=200, bbox_inches="tight")
         if show:
             plt.show()
         else:
             plt.close(fig)
 
         return fig, ax
+
+    # -- </GPT magic> ---
+
+
+### === Footnotes ==== ###
+# 1. Stupid numpy reshaping without a reshape into (-1, 1) this would broadcast
+# into a Z.size, Z.size array when you try to add it to the bias vector
+# (Z.size,) and (Z.size, 1) are different!!!

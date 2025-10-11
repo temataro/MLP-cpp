@@ -47,7 +47,7 @@ Y_train = np.array([-1, 1, 1, -1])
 assert X_train.shape[0] == Y_train.shape[0], "Training example mismatch."
 # ---
 
-model = MLP(hl=[4, 4])
+model = MLP(hl=[2])
 
 
 def eval_model(x):
@@ -55,13 +55,16 @@ def eval_model(x):
     _, a = model.forward(test)
     print(f"Model prediction for {epoch=},{test=}:\n{x=}\tpred={a[-1][-1]}")
 
+
 m = n_examples
 MSE = []
 for epoch in range(1000):
     for t in range(n_examples):
         if DBG:
             print(
-                f"==== Training Step {t}\n{model.W[0]=},\n{model.W[1]=},\n{model.W[2]=},\n{model.B[0]=},\n{model.B[1]=},\n{model.B[2]=},\n{model.lr=}\n"
+                f"==== Training Step {t}\n{model.W[0]=},\n"
+                f"{model.W[1]=},\n{model.W[2]=},\n{model.B[0]=},\n"
+                f"{model.B[1]=},\n{model.B[2]=},\n{model.lr=}\n"
             )
             print("=== *** ===")
 
